@@ -1,0 +1,56 @@
+services:
+  app:
+    build:
+      context:  ${PROJECT_ROOT}
+      dockerfile: Dockerfile
+    container_name: app
+    environment:
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - BASE_URL=${BASE_URL}
+      - PORT=:8080
+    ports:
+      - "8080:8080"
+    restart: always
+
+
+  postgres:
+    image: postgres:18.4-bookworm
+    container_name: postgres
+    environment:
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ${PROJECT_ROOT}/out/pgdata:/var/lib/postgresql
+    restart: always
+
+  redis:
+    image: redis:8.6.4-alpine
+    container_name: redis
+
+  postgres-migrate:
+    image: migrate/migrate:v4.19.1
+    volumes:
+      - ${PROJECT_ROOT}/migrations:/migrations
+
+  port-forwarder-postgres:
+    image: alpine/socat:1.8.0.3
+    container_name: port-forwarder-postgres
+    command: tcp-listen:5432,fork,reuseaddr tcp-connect:postgres:5432
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  port-forwarder-redis:
+    image: alpine/socat:1.8.0.3
+    container_name: port-forwarder-redis
+    command: tcp-listen:6379,fork,reuseaddr tcp-connect:redis:6379
+    ports:
+      - "127.0.0.1:6379:6379"
